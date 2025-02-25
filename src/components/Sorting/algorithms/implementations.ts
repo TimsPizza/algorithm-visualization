@@ -1,13 +1,6 @@
 import { TSortingAlgorithms } from "../../../types";
 import { SortFunction, DrawOperationsWrapped } from "./types";
 
-// 交换数组元素的辅助函数
-const swap = (arr: number[], i: number, j: number): void => {
-  const temp = arr[i];
-  arr[i] = arr[j];
-  arr[j] = temp;
-};
-
 // 冒泡排序
 export const bubbleSort: SortFunction = async (array, drawOp, isSorting) => {
   const n = array.length;
@@ -20,7 +13,6 @@ export const bubbleSort: SortFunction = async (array, drawOp, isSorting) => {
       if (!isSorting()) return;
 
       if (array[j] > array[j + 1]) {
-        swap(array, j, j + 1);
         await drawOp.swap(j, j + 1);
         if (!isSorting()) return;
         swapped = true;
@@ -48,7 +40,6 @@ export const selectionSort: SortFunction = async (array, drawOp, isSorting) => {
     }
 
     if (minIdx !== i) {
-      swap(array, i, minIdx);
       await drawOp.swap(i, minIdx);
       if (!isSorting()) return;
     }
@@ -117,13 +108,11 @@ export const quickSort: SortFunction = async (array, drawOp, isSorting) => {
 
       if (array[j] < pivot) {
         i++;
-        swap(array, i, j);
         await drawOp.swap(i, j);
         if (!isSorting()) return -1;
       }
     }
 
-    swap(array, i + 1, high);
     await drawOp.swap(i + 1, high);
     return i + 1;
   };
@@ -165,7 +154,6 @@ export const heapSort: SortFunction = async (array, drawOp, isSorting) => {
     }
 
     if (largest !== i) {
-      swap(array, i, largest);
       await drawOp.swap(i, largest);
       if (!isSorting()) return;
       await heapify(n, largest);
@@ -181,7 +169,6 @@ export const heapSort: SortFunction = async (array, drawOp, isSorting) => {
 
   // 逐个从堆中提取元素
   for (let i = n - 1; i > 0 && isSorting(); i--) {
-    swap(array, 0, i);
     await drawOp.swap(0, i);
     if (!isSorting()) return;
     await heapify(i, 0);
@@ -203,7 +190,6 @@ export const cocktailSort: SortFunction = async (array, drawOp, isSorting) => {
       if (!isSorting()) return;
 
       if (array[i] > array[i + 1]) {
-        swap(array, i, i + 1);
         await drawOp.swap(i, i + 1);
         if (!isSorting()) return;
         swapped = true;
@@ -220,7 +206,6 @@ export const cocktailSort: SortFunction = async (array, drawOp, isSorting) => {
       if (!isSorting()) return;
 
       if (array[i] > array[i + 1]) {
-        swap(array, i, i + 1);
         await drawOp.swap(i, i + 1);
         if (!isSorting()) return;
         swapped = true;
@@ -237,6 +222,7 @@ export const mergeSort: SortFunction = async (array, drawOp, isSorting) => {
     mid: number,
     right: number,
   ): Promise<void> => {
+    // snapshot
     const leftArr = array.slice(left, mid + 1);
     const rightArr = array.slice(mid + 1, right + 1);
     let i = 0,
@@ -249,30 +235,27 @@ export const mergeSort: SortFunction = async (array, drawOp, isSorting) => {
 
       if (leftArr[i] <= rightArr[j]) {
         array[k] = leftArr[i];
-        await drawOp.swap(k, left + i);
-        if (!isSorting()) return;
+        await drawOp.update(k, leftArr[i]); // 仅更新目标位置
         i++;
       } else {
         array[k] = rightArr[j];
-        await drawOp.swap(k, mid + 1 + j);
-        if (!isSorting()) return;
+        await drawOp.update(k, rightArr[j]);
         j++;
       }
       k++;
     }
 
+    // 处理剩余元素（同样使用临时数组的值）
     while (i < leftArr.length && isSorting()) {
       array[k] = leftArr[i];
-      await drawOp.swap(k, left + i);
-      if (!isSorting()) return;
+      await drawOp.update(k, leftArr[i]);
       i++;
       k++;
     }
 
     while (j < rightArr.length && isSorting()) {
       array[k] = rightArr[j];
-      await drawOp.swap(k, mid + 1 + j);
-      if (!isSorting()) return;
+      await drawOp.update(k, rightArr[j]);
       j++;
       k++;
     }
@@ -382,11 +365,39 @@ export const combSort: SortFunction = async (array, drawOp, isSorting) => {
       if (!isSorting()) return;
 
       if (array[i] > array[i + gap]) {
-        swap(array, i, i + gap);
         await drawOp.swap(i, i + gap);
         if (!isSorting()) return;
         sorted = false;
       }
+    }
+  }
+};
+
+export const bucketSort: SortFunction = async (array, drawOp, isSorting) => {
+  const n = array.length;
+  const buckets: number[][] = Array.from({ length: n }, () => []);
+
+  // 将数字分配到桶中
+  for (let i = 0; i < n && isSorting(); i++) {
+    await drawOp.cmp(i, i); // 视觉反馈
+    const bucketIdx = Math.floor(array[i] * n);
+    buckets[bucketIdx].push(array[i]);
+  }
+
+  // 对每个桶进行排序
+  for (let i = 0; i < n && isSorting(); i++) {
+    buckets[i].sort((a, b) => a - b);
+  }
+
+  // 收集桶中的数字
+  let idx = 0;
+
+  for (let i = 0; i < n && isSorting(); i++) {
+    for (let j = 0; j < buckets[i].length && isSorting(); j++) {
+      array[idx] = buckets[i][j];
+      await drawOp.swap(idx, idx); // 视觉反馈
+      if (!isSorting()) return;
+      idx++;
     }
   }
 };
@@ -407,16 +418,17 @@ export const SORTING_ALGORITHMS: Array<TSortingAlgorithms> = [
 ];
 
 // 导出所有可用的排序算法
-export const sortingAlgorithms: Record<string, SortFunction> = {
-  "Bubble Sort": bubbleSort,
-  "Selection Sort": selectionSort,
-  "Insertion Sort": insertionSort,
-  "Shell Sort": shellSort,
-  "Quick Sort": quickSort,
-  "Heap Sort": heapSort,
-  "Cocktail Sort": cocktailSort,
-  "Merge Sort": mergeSort,
-  "Counting Sort": countingSort,
-  "Radix Sort": radixSort,
-  "Comb Sort": combSort,
+export const sortingAlgorithms: Record<TSortingAlgorithms, SortFunction> = {
+  BubbleSort: bubbleSort,
+  SelectionSort: selectionSort,
+  InsertionSort: insertionSort,
+  ShellSort: shellSort,
+  QuickSort: quickSort,
+  HeapSort: heapSort,
+  CocktailSort: cocktailSort,
+  MergeSort: mergeSort,
+  CountingSort: countingSort,
+  RadixSort: radixSort,
+  CombSort: combSort,
+  BucketSort: bucketSort,
 };

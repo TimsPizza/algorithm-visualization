@@ -9,6 +9,7 @@ import { useGlobalConfig } from "../../context/GlobalConfigContext";
 import { SortingController } from "./algorithms/controller";
 import { sortingAlgorithms } from "./algorithms/implementations";
 import { DrawOperations } from "./algorithms/types";
+import { TSortingAlgorithms } from "../../types";
 
 // 颜色常量
 const COLORS = {
@@ -107,6 +108,13 @@ export const Sorting: React.FC = () => {
           setArray([...controllerRef.current.array]);
         }
       },
+      update: (index: number, value: number) => {
+        setHighlightIndices([index]);
+        setHighlightColor("BAR_SWAPPING");
+        if (controllerRef.current) {
+          setArray([...controllerRef.current.array]);
+        }
+      },
       markSorted: () => {
         setHighlightIndices([]);
         setIsSorted(true);
@@ -117,7 +125,7 @@ export const Sorting: React.FC = () => {
 
   // 初始化排序控制器
   useEffect(() => {
-    const currentAlgorithm = sortingAlgorithms[algorithm];
+    const currentAlgorithm = sortingAlgorithms[algorithm as TSortingAlgorithms];
     if (!currentAlgorithm) return;
 
     const newArray = generateRandomArray(arraySize);
@@ -165,7 +173,9 @@ export const Sorting: React.FC = () => {
         const newArray = generateRandomArray(arraySize);
         controller.updateArray(newArray);
         controller.updateSpeedLevel(animationSpeed);
-        controller.updateAlgorithm(sortingAlgorithms[algorithm]);
+        controller.updateAlgorithm(
+          sortingAlgorithms[algorithm as TSortingAlgorithms],
+        );
         setArray(newArray);
         setHighlightIndices([]);
         setHighlightColor("BAR_DEFAULT");
@@ -194,7 +204,7 @@ export const Sorting: React.FC = () => {
   useEffect(() => {
     controllerRef.current = new SortingController(
       [],
-      sortingAlgorithms[algorithm],
+      sortingAlgorithms[algorithm as TSortingAlgorithms],
       drawOperations,
       animationSpeed,
     );

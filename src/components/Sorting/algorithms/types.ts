@@ -2,6 +2,7 @@
 export type DrawOperations = {
   cmp: (i: number, j: number) => void;      // 比较两个元素
   swap: (i: number, j: number) => void;     // 交换两个元素
+  update: (index: number, value: number) => void;  // 更新某个元素
   markSorted: () => void;                   // 标记排序完成
 };
 
@@ -9,6 +10,7 @@ export type DrawOperations = {
 export type DrawOperationsWrapped = {
   cmp: (i: number, j: number) => Promise<void>;    // 比较两个元素
   swap: (i: number, j: number) => Promise<void>;   // 交换两个元素
+  update: (index: number, value: number) => Promise<void>;   // 更新两个元素
   markSorted: () => Promise<void>;                 // 标记排序完成
 };
 

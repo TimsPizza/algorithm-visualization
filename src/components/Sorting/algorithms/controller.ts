@@ -40,7 +40,6 @@ export class SortingController implements SortController {
   // 根据速度级别决定是否跳过步骤
   private shouldSkip(): boolean {
     if (this._speedLevel <= 3) return false;
-    console.log("should skip: ", this._skipCounter > this.getStepSkipCount());
     return this._skipCounter > this.getStepSkipCount();
   }
 
@@ -105,6 +104,24 @@ export class SortingController implements SortController {
           ),
         );
       },
+      update: async (index: number, value: number): Promise<void> => {
+        if (!this.isSorting()) return;
+        this._array[index] = value;
+        await this.handlePause();
+        if (this.shouldSkip()) {
+          this._skipCounter += 1;
+          return;
+        }
+        this._drawOp.update(index, value);
+        this._skipCounter = 0;
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            this.getDelay(this._array.length, this._speedLevel) * 0.5,
+          ),
+        );
+      },
+
       markSorted: async (): Promise<void> => {
         if (!this.isSorting()) return;
         this._drawOp.markSorted();
