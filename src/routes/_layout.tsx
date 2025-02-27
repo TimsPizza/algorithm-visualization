@@ -11,7 +11,7 @@ const Layout = () => {
         <FloatingMenu />
         
         {/* Main Content */}
-        <main className="flex-1 w-full h-full">
+        <main className="flex-1 w-full h-full min-h-0 flex">
           <Outlet />
         </main>
       </div>

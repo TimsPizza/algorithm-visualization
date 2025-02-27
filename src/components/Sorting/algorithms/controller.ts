@@ -3,17 +3,21 @@ import {
   SortFunction,
   DrawOperations,
   DrawOperationsWrapped,
+  SortingState,
 } from "./types";
 
 export class SortingController implements SortController {
   private _array: number[];
-  private _sorting: boolean = false;
-  private _paused: boolean = false;
   private _sortFunction: SortFunction;
   private _drawOp: DrawOperations;
   private _speedLevel: number;
   private _skipCounter: number = 0;
   private _wrappedOps: DrawOperationsWrapped;
+  private _state: SortingState = {
+    isActive: false,
+    isPaused: false,
+    isCancelled: false,
+  };
 
   constructor(
     array: number[],
@@ -26,16 +30,14 @@ export class SortingController implements SortController {
     this._drawOp = drawOp;
     this._speedLevel = speedLevel;
     this._wrappedOps = this.wrapDrawOperations();
-    this._sorting = false;
   }
+  getState = () => {
+    return this._state;
+  };
 
   get array(): number[] {
     return this._array;
   }
-
-  isSorting = (): boolean => {
-    return this._sorting && !this._paused;
-  };
 
   // 根据速度级别决定是否跳过步骤
   private shouldSkip(): boolean {
@@ -58,7 +60,7 @@ export class SortingController implements SortController {
 
   // 处理暂停
   private handlePause = async (): Promise<void> => {
-    while (this._paused && this._sorting) {
+    while (this._state.isActive && this._state.isPaused) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
   };
@@ -67,7 +69,7 @@ export class SortingController implements SortController {
   private wrapDrawOperations(): DrawOperationsWrapped {
     return {
       cmp: async (i: number, j: number): Promise<void> => {
-        if (!this.isSorting()) return;
+        if (this._state.isCancelled) return;
         // 比较操作在高速时可以跳过一些
         await this.handlePause();
         if (this.shouldSkip()) {
@@ -84,7 +86,7 @@ export class SortingController implements SortController {
         );
       },
       swap: async (i: number, j: number): Promise<void> => {
-        if (!this.isSorting()) return;
+        if (this._state.isCancelled) return;
         // 执行交换操作
         const temp = this._array[i];
         this._array[i] = this._array[j];
@@ -105,7 +107,7 @@ export class SortingController implements SortController {
         );
       },
       update: async (index: number, value: number): Promise<void> => {
-        if (!this.isSorting()) return;
+        if (this._state.isCancelled) return;
         this._array[index] = value;
         await this.handlePause();
         if (this.shouldSkip()) {
@@ -123,7 +125,7 @@ export class SortingController implements SortController {
       },
 
       markSorted: async (): Promise<void> => {
-        if (!this.isSorting()) return;
+        if (this._state.isPaused || this._state.isCancelled) return;
         this._drawOp.markSorted();
       },
     };
@@ -131,21 +133,23 @@ export class SortingController implements SortController {
 
   async start(): Promise<void> {
     console.log("Start sorting");
-    if (this._sorting) return;
-    this._sorting = true;
-    this._paused = false;
+    if (this._state.isActive) return;
+    this._state.isCancelled = false;
+    this._state.isActive = true;
+    this._state.isPaused = false;
 
     try {
-      await this._sortFunction(this._array, this._wrappedOps, this.isSorting);
+      await this._sortFunction(this._array, this._wrappedOps, this.getState);
     } catch (error) {
       console.error("Sorting error:", error);
       throw error;
     } finally {
-      this._sorting = false;
-      this._paused = false;
-      if (this._drawOp) {
+      if (this._drawOp && this._state.isActive) {
         await this._wrappedOps.markSorted();
       }
+      this._state.isActive = false;
+      this._state.isCancelled = false;
+      this._state.isPaused = false;
     }
   }
 
@@ -154,20 +158,18 @@ export class SortingController implements SortController {
   }
 
   pause(): void {
-    if (this._sorting && !this._paused) {
-      this._paused = true;
-    }
+    this._state.isPaused = true;
   }
 
   resume(): void {
-    if (this._sorting && this._paused) {
-      this._paused = false;
-    }
+    this._state.isPaused = false;
   }
 
   reset(): void {
-    this._sorting = false;
-    this._paused = false;
+    this._state.isActive = false;
+    this._state.isPaused = false;
+    this._state.isCancelled = false;
+    this._array = [];
     this._skipCounter = 0;
   }
 
@@ -176,7 +178,7 @@ export class SortingController implements SortController {
   }
 
   updateArray(array: number[]): void {
-    if (!this._sorting) {
+    if (!this._state.isActive) {
       this._array = array;
       this._wrappedOps = this.wrapDrawOperations();
     }

@@ -9,47 +9,38 @@ import { useGlobalConfig } from "../../context/GlobalConfigContext";
 import { SortingController } from "./algorithms/controller";
 import { sortingAlgorithms } from "./algorithms/implementations";
 import { DrawOperations } from "./algorithms/types";
+import { visualizers } from "./visualizers/implementations";
+import {
+  VISUALIZER_TYPES,
+  VISUALIZER_OPTIONS,
+  VisualizerType,
+} from "./visualizers/types";
 import { TSortingAlgorithms } from "../../types";
 
 // 颜色常量
 const COLORS = {
-  BAR_DEFAULT: "#4C51BF", // 默认柱状图颜色
-  BAR_COMPARING: "#F6E05E", // 比较中的元素颜色
-  BAR_SWAPPING: "#F56565", // 交换中的元素颜色
-  BAR_SORTED: "#48BB78", // 已排序的元素颜色
-};
+  BAR_DEFAULT: "#55D6C2", // 默认颜色
+  BAR_COMPARING: "#F6E05E", // 比较颜色
+  BAR_SWAPPING: "#F56565", // 交换颜色
+  BAR_SORTED: "#48BB78", // 已排序颜色
+} as const;
 
 // 生成随机数组
 const generateRandomArray = (length: number): number[] => {
   return Array.from({ length }, () => Math.random() * 0.8 + 0.1);
 };
 
-// 计算柱状图尺寸
-const calculateBarDimensions = (
-  canvasWidth: number,
-  canvasHeight: number,
-  arraySize: number,
-) => {
-  const minBarWidth = 2;
-  const maxBarWidth = 30;
-  let barWidth = Math.min(maxBarWidth, (canvasWidth * 0.8) / arraySize);
-  barWidth = Math.max(minBarWidth, barWidth);
-  const barSpacing = Math.max(1, barWidth * 0.2);
-
-  return {
-    barWidth,
-    barSpacing,
-    startX: (canvasWidth - (barWidth + barSpacing) * arraySize) / 2,
-  };
-};
-
 export const Sorting: React.FC = () => {
+  // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<SortingController | null>(null);
+  const requestAnimationFrameRef = useRef<number>();
+
+  // Global Config
   const { algorithm, animationSpeed, arraySize, state, setExecutionState } =
     useGlobalConfig();
 
-  // 维护一个本地数组状态用于渲染
+  // Local State
   const [array, setArray] = useState<number[]>(() =>
     generateRandomArray(arraySize),
   );
@@ -57,6 +48,17 @@ export const Sorting: React.FC = () => {
   const [highlightColor, setHighlightColor] =
     useState<keyof typeof COLORS>("BAR_DEFAULT");
   const [isSorted, setIsSorted] = useState(false);
+  const [visualizerType, setVisualizerType] = useState<VisualizerType>(
+    VISUALIZER_TYPES.CLASSIC_BARS,
+  );
+
+  // 清理动画帧
+  const cancelAnimation = useCallback(() => {
+    if (requestAnimationFrameRef.current) {
+      cancelAnimationFrame(requestAnimationFrameRef.current);
+      requestAnimationFrameRef.current = undefined;
+    }
+  }, []);
 
   // 绘制函数
   const draw = useCallback(() => {
@@ -66,34 +68,35 @@ export const Sorting: React.FC = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 更新画布尺寸
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
 
-    const { barWidth, barSpacing, startX } = calculateBarDimensions(
-      canvas.width,
-      canvas.height,
-      array.length,
-    );
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
 
-    array.forEach((value, index) => {
-      const x = startX + index * (barWidth + barSpacing);
-      const height = value * canvas.height * 0.8;
-      const y = canvas.height - height;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, rect.width, rect.height);
 
-      if (isSorted) {
-        ctx.fillStyle = COLORS.BAR_SORTED;
-      } else if (highlightIndices.includes(index)) {
-        ctx.fillStyle = COLORS[highlightColor];
-      } else {
-        ctx.fillStyle = COLORS.BAR_DEFAULT;
-      }
+    // 获取当前可视化器
+    const currentVisualizer = visualizers[visualizerType];
+    if (!currentVisualizer) return;
 
-      ctx.fillRect(x, y, barWidth, height);
+    // 绘制数组
+    currentVisualizer.draw({
+      ctx,
+      width: rect.width,
+      height: rect.height,
+      array,
+      highlightIndices,
+      highlightColor: COLORS[highlightColor],
+      defaultColor: COLORS.BAR_DEFAULT,
+      sortedColor: COLORS.BAR_SORTED,
+      isSorted,
     });
-  }, [array, highlightIndices, highlightColor, isSorted]);
+  }, [array, highlightIndices, highlightColor, isSorted, visualizerType]);
 
-  // 基本绘图操作
+  // 绘图操作
   const drawOperations = useMemo<DrawOperations>(
     () => ({
       cmp: (i: number, j: number) => {
@@ -103,7 +106,6 @@ export const Sorting: React.FC = () => {
       swap: (i: number, j: number) => {
         setHighlightIndices([i, j]);
         setHighlightColor("BAR_SWAPPING");
-        // 从控制器获取最新数组状态
         if (controllerRef.current) {
           setArray([...controllerRef.current.array]);
         }
@@ -123,6 +125,13 @@ export const Sorting: React.FC = () => {
     [],
   );
 
+  // 使用 requestAnimationFrame 优化重绘
+  useEffect(() => {
+    cancelAnimation();
+    requestAnimationFrameRef.current = requestAnimationFrame(draw);
+    return cancelAnimation;
+  }, [draw, cancelAnimation]);
+
   // 初始化排序控制器
   useEffect(() => {
     const currentAlgorithm = sortingAlgorithms[algorithm as TSortingAlgorithms];
@@ -134,12 +143,19 @@ export const Sorting: React.FC = () => {
     setHighlightColor("BAR_DEFAULT");
     setIsSorted(false);
 
+    controllerRef.current = new SortingController(
+      newArray,
+      currentAlgorithm,
+      drawOperations,
+      animationSpeed,
+    );
+
     return () => {
       if (controllerRef.current) {
         controllerRef.current.reset();
       }
     };
-  }, [algorithm, arraySize, animationSpeed, drawOperations]);
+  }, [algorithm, arraySize, drawOperations]);
 
   // 处理动画速度变化
   useEffect(() => {
@@ -151,18 +167,20 @@ export const Sorting: React.FC = () => {
   // 处理状态变化
   useEffect(() => {
     const controller = controllerRef.current;
-    if (!controller) {
-      console.error("Controller not initialized");
-      return;
-    }
+    if (!controller) return;
 
     switch (state) {
       case "running":
+        if (controller.getState().isActive && controller.getState().isPaused) {
+          // resume from paused state
+          controller.resume();
+          return;
+        }
         setHighlightIndices([]);
         setHighlightColor("BAR_DEFAULT");
         setIsSorted(false);
         controller.start().then(() => {
-          setExecutionState("finished");
+          if (controller.getState().isActive) setExecutionState("finished");
         });
         break;
       case "paused":
@@ -172,45 +190,50 @@ export const Sorting: React.FC = () => {
         controller.reset();
         const newArray = generateRandomArray(arraySize);
         controller.updateArray(newArray);
-        controller.updateSpeedLevel(animationSpeed);
-        controller.updateAlgorithm(
-          sortingAlgorithms[algorithm as TSortingAlgorithms],
-        );
         setArray(newArray);
-        setHighlightIndices([]);
         setHighlightColor("BAR_DEFAULT");
+        setHighlightIndices([]);
         setIsSorted(false);
-        controller.updateArray(newArray);
         break;
       case "finished":
-        // 保持当前状态，等待用户手动重置
         break;
     }
   }, [state, arraySize]);
 
-  // 监听窗口大小变化时重新绘制
+  // 处理窗口大小变化
   useEffect(() => {
-    const handleResize = () => draw();
+    const handleResize = () => {
+      cancelAnimation();
+      requestAnimationFrameRef.current = requestAnimationFrame(draw);
+    };
+
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [draw]);
+  }, [draw, cancelAnimation]);
 
-  // 每当数组或高亮状态改变时重新绘制
-  useEffect(() => {
-    draw();
-  }, [draw]);
-
-  // initialize
-  useEffect(() => {
-    controllerRef.current = new SortingController(
-      [],
-      sortingAlgorithms[algorithm as TSortingAlgorithms],
-      drawOperations,
-      animationSpeed,
-    );
-  }, []);
-
-  return <canvas ref={canvasRef} className="h-full w-full" />;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col" id="sorting-wrapper">
+      <div className="flex flex-none flex-row flex-wrap justify-center gap-2">
+        {VISUALIZER_OPTIONS.map(({ type, label }) => (
+          <button
+            key={type}
+            onClick={() => setVisualizerType(type)}
+            className={`rounded px-3 py-1 ${
+              visualizerType === type
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+            title={visualizers[type]?.description}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="flex min-h-0 w-full flex-1 items-center justify-center">
+        <canvas ref={canvasRef} className="w-full" />
+      </div>
+    </div>
+  );
 };
 
 export default Sorting;
