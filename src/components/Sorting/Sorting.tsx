@@ -18,7 +18,7 @@ import {
 import { TSortingAlgorithms } from "../../types";
 
 // 颜色常量
-const COLORS = {
+export const COLORS = {
   BAR_DEFAULT: "#55D6C2", // 默认颜色
   BAR_COMPARING: "#F6E05E", // 比较颜色
   BAR_SWAPPING: "#F56565", // 交换颜色
@@ -180,7 +180,7 @@ export const Sorting: React.FC = () => {
         setHighlightColor("BAR_DEFAULT");
         setIsSorted(false);
         controller.start().then(() => {
-          if (controller.getState().isActive) setExecutionState("finished");
+          if (controller.getState().isFinished) setExecutionState("finished");
         });
         break;
       case "paused":
@@ -213,7 +213,7 @@ export const Sorting: React.FC = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" id="sorting-wrapper">
-      <div className="flex flex-none flex-row flex-wrap justify-center gap-2">
+      <div className="flex flex-none flex-row flex-wrap justify-center gap-2 mt-4">
         {VISUALIZER_OPTIONS.map(({ type, label }) => (
           <button
             key={type}

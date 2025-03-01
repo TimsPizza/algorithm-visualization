@@ -17,6 +17,7 @@ export class SortingController implements SortController {
     isActive: false,
     isPaused: false,
     isCancelled: false,
+    isFinished: false,
   };
 
   constructor(
@@ -46,7 +47,7 @@ export class SortingController implements SortController {
   }
 
   private getStepSkipCount(speedLevel: number = this._speedLevel): number {
-    return Math.floor(Math.pow(2, speedLevel - 3)); // 速度6-10，指数增加跳过步骤
+    return Math.floor(Math.pow(3, speedLevel - 3)); // 速度6-10，指数增加跳过步骤
   }
 
   // 根据数组大小动态计算延迟
@@ -140,6 +141,7 @@ export class SortingController implements SortController {
 
     try {
       await this._sortFunction(this._array, this._wrappedOps, this.getState);
+      this._state.isFinished = true;
     } catch (error) {
       console.error("Sorting error:", error);
       throw error;

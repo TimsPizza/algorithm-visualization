@@ -19,6 +19,7 @@ export type SortingState = {
   isActive: boolean;     // 排序是否正在进行
   isPaused: boolean;      // 是否暂停
   isCancelled: boolean;   // 是否被取消
+  isFinished: boolean;    // 是否完成
 };
 
 // 定义排序算法的类型

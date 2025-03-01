@@ -1,3 +1,4 @@
+import { COLORS } from "../Sorting";
 import { Visualizer, VisualizerContext, VISUALIZER_TYPES } from "./types";
 
 // 辅助函数：生成热力图颜色
@@ -111,10 +112,7 @@ export const GridVisualizer: Visualizer = {
       const col = index % gridSize;
       const x = startX + col * cellSize;
       const y = startY + row * cellSize;
-
-      if (isSorted) {
-        ctx.fillStyle = sortedColor;
-      } else if (highlightIndices.includes(index)) {
+      if (highlightIndices.includes(index)) {
         ctx.fillStyle = highlightColor;
       } else {
         const brightness = Math.floor(value * 100);
@@ -155,9 +153,7 @@ export const RadialVisualizer: Visualizer = {
       const x = centerX + Math.cos(angle) * length;
       const y = centerY + Math.sin(angle) * length;
 
-      if (isSorted) {
-        ctx.strokeStyle = sortedColor;
-      } else if (highlightIndices.includes(index)) {
+      if (highlightIndices.includes(index)) {
         ctx.strokeStyle = highlightColor;
       } else {
         ctx.strokeStyle = `hsl(${value * 360}, 70%, 50%)`;
@@ -248,9 +244,7 @@ export const HeatBarVisualizer: Visualizer = {
       const h = value * height * 0.8;
       const y = height - h;
 
-      if (isSorted) {
-        ctx.fillStyle = sortedColor;
-      } else if (highlightIndices.includes(index)) {
+      if (highlightIndices.includes(index)) {
         ctx.fillStyle = highlightColor;
       } else {
         ctx.fillStyle = getHeatColor(value);

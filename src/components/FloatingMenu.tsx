@@ -170,7 +170,8 @@ export const FloatingMenu: React.FC = () => {
                   onClick={() => {
                     setExecutionState("paused");
                   }}
-                  disabled={state === "paused"}
+                  // @ts-ignore
+                  disabled={state === "paused" || state === "finished"}
                   className="flex-1 rounded-md bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600 disabled:bg-gray-400"
                 >
                   Pause
