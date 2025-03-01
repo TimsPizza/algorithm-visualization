@@ -1,5 +1,4 @@
-import { COLORS } from "../Sorting";
-import { Visualizer, VisualizerContext, VISUALIZER_TYPES } from "./types";
+import { Visualizer, VISUALIZER_TYPES } from "./types";
 
 // 辅助函数：生成热力图颜色
 const getHeatColor = (value: number): string => {
@@ -23,9 +22,13 @@ export const BarVisualizer: Visualizer = {
     sortedColor,
     isSorted,
   }) => {
-    const barWidth = Math.max(0.25, Math.min(10, (width * 0.8) / array.length));
-    const barSpacing = barWidth * 0.5;
-    const startX = (width - (barWidth + barSpacing) * array.length) / 2;
+    // 根据数组大小动态调整柱状图宽度和间距
+    const maxBars = width / 2; // 确保至少2像素宽度
+    const scale = array.length > maxBars ? maxBars / array.length : 1;
+    const barWidth = Math.max(2, Math.min(10, (width * 0.8 / array.length) * scale));
+    const barSpacing = Math.max(0, Math.min(barWidth * 0.2, 2));
+    const totalWidth = (barWidth + barSpacing) * array.length;
+    const startX = (width - totalWidth) / 2;
 
     array.forEach((value, index) => {
       const x = startX + index * (barWidth + barSpacing);
@@ -235,9 +238,13 @@ export const HeatBarVisualizer: Visualizer = {
     sortedColor,
     isSorted,
   }) => {
-    const barWidth = Math.max(2, Math.min(30, (width * 0.8) / array.length));
-    const barSpacing = Math.max(1, barWidth * 0.2);
-    const startX = (width - (barWidth + barSpacing) * array.length) / 2;
+    // 适应大数组的动态缩放
+    const maxBars = width / 2;
+    const scale = array.length > maxBars ? maxBars / array.length : 1;
+    const barWidth = Math.max(2, Math.min(30, (width * 0.8 / array.length) * scale));
+    const barSpacing = Math.max(0, Math.min(barWidth * 0.2, 2));
+    const totalWidth = (barWidth + barSpacing) * array.length;
+    const startX = (width - totalWidth) / 2;
 
     array.forEach((value, index) => {
       const x = startX + index * (barWidth + barSpacing);

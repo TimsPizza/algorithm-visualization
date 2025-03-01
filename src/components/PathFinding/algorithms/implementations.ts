@@ -1,4 +1,5 @@
-import { PathFindingFunction, Grid, Point, VisitRecord } from "./types";
+import { TPathFindingAlgorithms } from "../../../types";
+import { PathFindingFunction, Grid, Point } from "./types";
 
 // 辅助函数：获取节点的邻居
 const getNeighbors = (grid: Grid, point: Point): Point[] => {
@@ -354,11 +355,268 @@ const greedyBestFirst: PathFindingFunction = async (
   }
 };
 
+// 双向广度优先搜索
+const bidirectionalBFS: PathFindingFunction = async (
+  grid,
+  start,
+  end,
+  drawOp,
+  getState,
+) => {
+  // 如果起点终点相同，直接结束
+  if (start.x === end.x && start.y === end.y) {
+    await drawOp.markPath([start]);
+    return;
+  }
+
+  const pointKey = (p: Point) => `${p.x},${p.y}`;
+
+  // 两个队列、两份已访问集合、两份前驱记录
+  const forwardQueue: Point[] = [start];
+  const backwardQueue: Point[] = [end];
+  const forwardVisited = new Set<string>([pointKey(start)]);
+  const backwardVisited = new Set<string>([pointKey(end)]);
+  const forwardPrev = new Map<string, Point>();
+  const backwardPrev = new Map<string, Point>();
+
+  // 构建完整路径
+  const buildPath = (meetPoint: Point) => {
+    const path: Point[] = [];
+    // 从 meetPoint 往回找 start
+    let curr: Point | undefined = meetPoint;
+    while (curr) {
+      path.unshift(curr);
+      const key = pointKey(curr);
+      curr = forwardPrev.get(key);
+    }
+    // 从 meetPoint 往回找 end（跳过meetPoint本身）
+    curr = backwardPrev.get(pointKey(meetPoint));
+    while (curr) {
+      path.push(curr);
+      curr = backwardPrev.get(pointKey(curr));
+    }
+    return path;
+  };
+
+  // 主循环：两端交替扩展
+  while (forwardQueue.length > 0 && backwardQueue.length > 0) {
+    if (!getState().isActive) return;
+
+    // 前向搜索一层
+    const forwardSize = forwardQueue.length;
+    for (let i = 0; i < forwardSize; i++) {
+      const current = forwardQueue.shift()!;
+      const neighbors = getNeighbors(grid, current);
+
+      for (const neighbor of neighbors) {
+        const neighborKey = pointKey(neighbor);
+        if (!forwardVisited.has(neighborKey)) {
+          forwardVisited.add(neighborKey);
+          forwardPrev.set(neighborKey, current);
+          await drawOp.visit({ point: neighbor, previousPoint: current });
+
+          // 如果该邻居已被后向搜索访问过，说明找到了相遇点
+          if (backwardVisited.has(neighborKey)) {
+            const path = buildPath(neighbor);
+            await drawOp.markPath(path);
+            return;
+          }
+          forwardQueue.push(neighbor);
+        }
+      }
+    }
+
+    if (!getState().isActive) return;
+
+    // 后向搜索一层
+    const backwardSize = backwardQueue.length;
+    for (let i = 0; i < backwardSize; i++) {
+      const current = backwardQueue.shift()!;
+      const neighbors = getNeighbors(grid, current);
+
+      for (const neighbor of neighbors) {
+        const neighborKey = pointKey(neighbor);
+        if (!backwardVisited.has(neighborKey)) {
+          backwardVisited.add(neighborKey);
+          backwardPrev.set(neighborKey, current);
+          await drawOp.visit({ point: neighbor, previousPoint: current });
+
+          // 如果该邻居已被前向搜索访问过，说明找到了相遇点
+          if (forwardVisited.has(neighborKey)) {
+            const path = buildPath(neighbor);
+            await drawOp.markPath(path);
+            return;
+          }
+          backwardQueue.push(neighbor);
+        }
+      }
+    }
+  }
+};
+
+// 双向 A* 搜索
+const bidirectionalAStar: PathFindingFunction = async (
+  grid,
+  start,
+  end,
+  drawOp,
+  getState,
+) => {
+  if (start.x === end.x && start.y === end.y) {
+    await drawOp.markPath([start]);
+    return;
+  }
+
+  const pointKey = (p: Point) => `${p.x},${p.y}`;
+
+  // 前向和后向的 g、f 值记录
+  const forwardG = new Map<string, number>();
+  const backwardG = new Map<string, number>();
+  const forwardF = new Map<string, number>();
+  const backwardF = new Map<string, number>();
+
+  const forwardPrev = new Map<string, Point>();
+  const backwardPrev = new Map<string, Point>();
+
+  const forwardVisited = new Set<string>();
+  const backwardVisited = new Set<string>();
+
+  // 初始化起点和终点
+  forwardG.set(pointKey(start), 0);
+  backwardG.set(pointKey(end), 0);
+  forwardF.set(pointKey(start), manhattanDistance(start, end));
+  backwardF.set(pointKey(end), manhattanDistance(end, start));
+
+  let forwardCurrent = start;
+  let backwardCurrent = end;
+
+  // 构建路径
+  const buildPath = (meetPoint: Point) => {
+    const path: Point[] = [];
+    let curr: Point | undefined = meetPoint;
+    while (curr) {
+      path.unshift(curr);
+      curr = forwardPrev.get(pointKey(curr));
+    }
+    curr = backwardPrev.get(pointKey(meetPoint));
+    while (curr) {
+      path.push(curr);
+      curr = backwardPrev.get(pointKey(curr));
+    }
+    return path;
+  };
+
+  // 选择下一个要访问的节点
+  const getNextNode = (
+    fScore: Map<string, number>,
+    visited: Set<string>,
+    grid: Grid,
+  ): Point | null => {
+    let minF = Infinity;
+    let next: Point | null = null;
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[0].length; x++) {
+        const key = pointKey({ x, y });
+        if (!visited.has(key)) {
+          const f = fScore.get(key) ?? Infinity;
+          if (f < minF) {
+            minF = f;
+            next = { x, y };
+          }
+        }
+      }
+    }
+    return next;
+  };
+
+  await drawOp.visit({ point: start, previousPoint: null });
+  await drawOp.visit({ point: end, previousPoint: null });
+
+  while (forwardCurrent && backwardCurrent) {
+    if (!getState().isActive) return;
+
+    // 前向搜索
+    const forwardKey = pointKey(forwardCurrent);
+    forwardVisited.add(forwardKey);
+
+    const forwardNeighbors = getNeighbors(grid, forwardCurrent);
+    for (const neighbor of forwardNeighbors) {
+      const neighborKey = pointKey(neighbor);
+      if (forwardVisited.has(neighborKey)) continue;
+
+      const tentativeG = (forwardG.get(forwardKey) ?? 0) + 1;
+      if (tentativeG < (forwardG.get(neighborKey) ?? Infinity)) {
+        forwardPrev.set(neighborKey, forwardCurrent);
+        forwardG.set(neighborKey, tentativeG);
+        forwardF.set(
+          neighborKey,
+          tentativeG + manhattanDistance(neighbor, end),
+        );
+        await drawOp.visit({ point: neighbor, previousPoint: forwardCurrent });
+
+        if (backwardVisited.has(neighborKey)) {
+          // 找到相遇点，返回路径
+          const path = buildPath(neighbor);
+          await drawOp.markPath(path);
+          return;
+        }
+      }
+    }
+
+    // 后向搜索
+    const backwardKey = pointKey(backwardCurrent);
+    backwardVisited.add(backwardKey);
+
+    const backwardNeighbors = getNeighbors(grid, backwardCurrent);
+    for (const neighbor of backwardNeighbors) {
+      const neighborKey = pointKey(neighbor);
+      if (backwardVisited.has(neighborKey)) continue;
+
+      const tentativeG = (backwardG.get(backwardKey) ?? 0) + 1;
+      if (tentativeG < (backwardG.get(neighborKey) ?? Infinity)) {
+        backwardPrev.set(neighborKey, backwardCurrent);
+        backwardG.set(neighborKey, tentativeG);
+        backwardF.set(
+          neighborKey,
+          tentativeG + manhattanDistance(neighbor, start),
+        );
+        await drawOp.visit({ point: neighbor, previousPoint: backwardCurrent });
+
+        if (forwardVisited.has(neighborKey)) {
+          // 找到相遇点，返回路径
+          const path = buildPath(neighbor);
+          await drawOp.markPath(path);
+          return;
+        }
+      }
+    }
+
+    // 选择下一个要访问的节点
+    forwardCurrent = getNextNode(forwardF, forwardVisited, grid)!;
+    backwardCurrent = getNextNode(backwardF, backwardVisited, grid)!;
+  }
+};
+
 // 导出所有算法
-export const pathFindingAlgorithms: Record<string, PathFindingFunction> = {
+export const pathFindingAlgorithms: Record<
+  TPathFindingAlgorithms,
+  PathFindingFunction
+> = {
   Dijkstra: dijkstra,
   "A-Star": aStar,
   BreadthFirst: breadthFirst,
   DepthFirst: depthFirst,
   GreedyBestFirst: greedyBestFirst,
+  "Bidirectional-BFS": bidirectionalBFS,
+  "Bidirectional-A*": bidirectionalAStar,
 };
+
+export const PATH_FINDING_ALGORITHMS: Array<TPathFindingAlgorithms> = [
+  "Dijkstra",
+  "A-Star",
+  "BreadthFirst",
+  "DepthFirst",
+  "GreedyBestFirst",
+  "Bidirectional-BFS",
+  "Bidirectional-A*",
+];

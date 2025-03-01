@@ -144,6 +144,7 @@ export class PathFindingController implements PathFindingController {
     this._state.isActive = false;
     this._state.isPaused = false;
     this._state.isCancelled = false;
+    this._state.isFinished = false;
   }
 
   updateSpeedLevel(speedLevel: number): void {

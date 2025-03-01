@@ -259,24 +259,23 @@ export const mergeSort: SortFunction = async (array, drawOp, getState) => {
     left: number,
     mid: number,
     right: number,
-  ): Promise<void> => {
-    // snapshot
+  ): Promise<boolean> => {
+    if (!getState().isActive || getState().isCancelled) return false;
+
     const leftArr = array.slice(left, mid + 1);
     const rightArr = array.slice(mid + 1, right + 1);
     let i = 0,
       j = 0,
       k = left;
 
-    while (
-      i < leftArr.length &&
-      j < rightArr.length &&
-      !getState().isCancelled
-    ) {
+    while (i < leftArr.length && j < rightArr.length) {
+      if (!getState().isActive || getState().isCancelled) return false;
+      
       await drawOp.cmp(left + i, mid + 1 + j);
 
       if (leftArr[i] <= rightArr[j]) {
         array[k] = leftArr[i];
-        await drawOp.update(k, leftArr[i]); // 仅更新目标位置
+        await drawOp.update(k, leftArr[i]);
         i++;
       } else {
         array[k] = rightArr[j];
@@ -286,42 +285,44 @@ export const mergeSort: SortFunction = async (array, drawOp, getState) => {
       k++;
     }
 
-    // 处理剩余元素（同样使用临时数组的值）
-    while (
-      i < leftArr.length &&
-      !getState().isCancelled &&
-      getState().isActive
-    ) {
+    // 处理剩余元素
+    while (i < leftArr.length) {
+      if (!getState().isActive || getState().isCancelled) return false;
+      
       array[k] = leftArr[i];
       await drawOp.update(k, leftArr[i]);
       i++;
       k++;
     }
 
-    while (
-      j < rightArr.length &&
-      !getState().isCancelled &&
-      getState().isActive
-    ) {
+    while (j < rightArr.length) {
+      if (!getState().isActive || getState().isCancelled) return false;
+      
       array[k] = rightArr[j];
       await drawOp.update(k, rightArr[j]);
       j++;
       k++;
     }
+
+    return true;
   };
 
   const mergeSortHelper = async (
     left: number,
     right: number,
-  ): Promise<void> => {
-    if (left < right && !getState().isCancelled && getState().isActive) {
+  ): Promise<boolean> => {
+    if (!getState().isActive || getState().isCancelled) return false;
+    
+    if (left < right) {
       const mid = Math.floor((left + right) / 2);
-      await mergeSortHelper(left, mid);
-
-      await mergeSortHelper(mid + 1, right);
-
-      await merge(left, mid, right);
+      
+      // 如果任何一步返回false，立即中止整个排序过程
+      if (!await mergeSortHelper(left, mid)) return false;
+      if (!await mergeSortHelper(mid + 1, right)) return false;
+      if (!await merge(left, mid, right)) return false;
     }
+    
+    return true;
   };
 
   await mergeSortHelper(0, array.length - 1);

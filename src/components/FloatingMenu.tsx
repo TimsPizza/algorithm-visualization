@@ -4,6 +4,7 @@ import { useGlobalConfig } from "../context/GlobalConfigContext";
 import { TAlgorithmCategories, TAlgorithms } from "../types";
 import { SORTING_ALGORITHMS } from "./Sorting/algorithms/implementations";
 import Draggable from "react-draggable";
+import { PATH_FINDING_ALGORITHMS } from "./PathFinding/algorithms/implementations";
 
 // 算法类别与路由路径的映射
 const CATEGORY_ROUTES: Record<TAlgorithmCategories, string> = {
@@ -40,13 +41,7 @@ export const FloatingMenu: React.FC = () => {
   const getAlgorithmsForCategory = (): TAlgorithms[] => {
     switch (algorithmCategory) {
       case "Path Finding":
-        return [
-          "Dijkstra",
-          "A-Star",
-          "GreedyBestFirst",
-          "BreadthFirst",
-          "DepthFirst",
-        ];
+        return PATH_FINDING_ALGORITHMS;
       case "Bi-Tree Traversal":
         return ["InOrder", "PreOrder", "PostOrder"];
       case "Bi-Search Tree":

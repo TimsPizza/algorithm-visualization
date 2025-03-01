@@ -32,7 +32,9 @@ export type TPathFindingAlgorithms =
   | "A-Star"
   | "GreedyBestFirst"
   | "BreadthFirst"
-  | "DepthFirst";
+  | "DepthFirst"
+  | "Bidirectional-BFS"
+  | "Bidirectional-A*"
 
 export type TBiTreeTraversalAlgorithms = "InOrder" | "PreOrder" | "PostOrder";
 

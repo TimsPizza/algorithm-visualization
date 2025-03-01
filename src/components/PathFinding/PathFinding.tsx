@@ -29,7 +29,7 @@ const COLORS = {
   CURRENT: "#667eea", // 当前访问节点
 } as const;
 
-const COLS = 64;
+const COLS = 100;
 const ROWS = 144;
 
 // 点位相等判断
@@ -314,7 +314,9 @@ export const PathFinding: React.FC = () => {
           return;
         }
         controller.start().then(() => {
-          if (controller.getState().isFinished) setExecutionState("finished");
+          if (controller.getState().isFinished) {
+            setExecutionState("finished");
+          }
         });
         break;
       case "paused":
