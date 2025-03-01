@@ -179,31 +179,65 @@ export const PathFinding: React.FC = () => {
   }, [getCellSize, getCellState]);
 
   // 处理墙壁绘制
-  const handleWallDrawing = useCallback(
-    (point: Point) => {
-      if (
-        !lastVisitedCellRef.current ||
-        !isSamePoint(lastVisitedCellRef.current, point)
-      ) {
-        const key = `${point.x},${point.y}`;
-        if (isWallDrawingRef.current === null) {
-          isWallDrawingRef.current = !walls.has(key);
-        }
+  // Bresenham's line algorithm for interpolation
+const getPointsOnLine = (p1: Point, p2: Point): Point[] => {
+  const points: Point[] = [];
+  const dx = Math.abs(p2.x - p1.x);
+  const dy = Math.abs(p2.y - p1.y);
+  const sx = p1.x < p2.x ? 1 : -1;
+  const sy = p1.y < p2.y ? 1 : -1;
+  let err = dx - dy;
 
-        setWalls((prevWalls) => {
-          const newWalls = new Set(prevWalls);
+  let x = p1.x;
+  let y = p1.y;
+
+  while (true) {
+    points.push({ x, y });
+    if (x === p2.x && y === p2.y) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y += sy;
+    }
+  }
+  return points;
+};
+
+const handleWallDrawing = useCallback(
+    (point: Point) => {
+      if (!GridVisualizer.isValidGridPosition(point.x, point.y, COLS, ROWS)) return;
+      
+      // Initialize wall drawing mode if needed
+      if (isWallDrawingRef.current === null) {
+        isWallDrawingRef.current = !walls.has(`${point.x},${point.y}`);
+      }
+
+      // Get points to draw
+      const points = lastVisitedCellRef.current
+        ? getPointsOnLine(lastVisitedCellRef.current, point)
+        : [point];
+
+      // Update walls for all points in the line
+      setWalls((prevWalls) => {
+        const newWalls = new Set(prevWalls);
+        points.forEach((p) => {
+          const key = `${p.x},${p.y}`;
           if (isWallDrawingRef.current) {
             newWalls.add(key);
           } else {
             newWalls.delete(key);
           }
-          return newWalls;
+          redrawCell(p);
+          controllerRef.current?.toggleWall(p);
         });
+        return newWalls;
+      });
 
-        redrawCell(point);
-        controllerRef.current?.toggleWall(point);
-        lastVisitedCellRef.current = point;
-      }
+      lastVisitedCellRef.current = point;
     },
     [walls, redrawCell],
   );
