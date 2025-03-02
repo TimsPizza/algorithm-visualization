@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
+import { generateMaze, generateRandomWalls } from "./mazeGenerators";
 import { useGlobalConfig } from "../../context/GlobalConfigContext";
 import { PathFindingController } from "./algorithms/controller";
 import { GridVisualizer } from "./visualizers/implementations";
@@ -56,6 +57,7 @@ export const PathFinding: React.FC = () => {
   const [draggedItem, setDraggedItem] = useState<
     "start" | "end" | "wall" | null
   >(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // 计算单元格大小
   const getCellSize = useCallback((canvas: HTMLCanvasElement) => {
@@ -180,37 +182,38 @@ export const PathFinding: React.FC = () => {
 
   // 处理墙壁绘制
   // Bresenham's line algorithm for interpolation
-const getPointsOnLine = (p1: Point, p2: Point): Point[] => {
-  const points: Point[] = [];
-  const dx = Math.abs(p2.x - p1.x);
-  const dy = Math.abs(p2.y - p1.y);
-  const sx = p1.x < p2.x ? 1 : -1;
-  const sy = p1.y < p2.y ? 1 : -1;
-  let err = dx - dy;
+  const getPointsOnLine = (p1: Point, p2: Point): Point[] => {
+    const points: Point[] = [];
+    const dx = Math.abs(p2.x - p1.x);
+    const dy = Math.abs(p2.y - p1.y);
+    const sx = p1.x < p2.x ? 1 : -1;
+    const sy = p1.y < p2.y ? 1 : -1;
+    let err = dx - dy;
 
-  let x = p1.x;
-  let y = p1.y;
+    let x = p1.x;
+    let y = p1.y;
 
-  while (true) {
-    points.push({ x, y });
-    if (x === p2.x && y === p2.y) break;
-    const e2 = 2 * err;
-    if (e2 > -dy) {
-      err -= dy;
-      x += sx;
+    while (true) {
+      points.push({ x, y });
+      if (x === p2.x && y === p2.y) break;
+      const e2 = 2 * err;
+      if (e2 > -dy) {
+        err -= dy;
+        x += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y += sy;
+      }
     }
-    if (e2 < dx) {
-      err += dx;
-      y += sy;
-    }
-  }
-  return points;
-};
+    return points;
+  };
 
-const handleWallDrawing = useCallback(
+  const handleWallDrawing = useCallback(
     (point: Point) => {
-      if (!GridVisualizer.isValidGridPosition(point.x, point.y, COLS, ROWS)) return;
-      
+      if (!GridVisualizer.isValidGridPosition(point.x, point.y, COLS, ROWS))
+        return;
+
       // Initialize wall drawing mode if needed
       if (isWallDrawingRef.current === null) {
         isWallDrawingRef.current = !walls.has(`${point.x},${point.y}`);
@@ -387,6 +390,56 @@ const handleWallDrawing = useCallback(
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <div className="fixed left-4 top-4 z-10 flex gap-2">
+        <button
+          className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 disabled:bg-gray-400"
+          onClick={() => {
+            if (isGenerating) return;
+            setIsGenerating(true);
+
+            // Generate new maze
+            const walls = generateMaze(COLS, ROWS, startPoint, endPoint);
+            setWalls(new Set(walls.map((w) => `${w.x},${w.y}`)));
+            draw();
+            setIsGenerating(false);
+          }}
+          disabled={isGenerating}
+        >
+          Generate Maze
+        </button>
+        <button
+          className="rounded bg-green-500 px-4 py-2 font-bold text-white hover:bg-green-700 disabled:bg-gray-400"
+          onClick={() => {
+            if (isGenerating) return;
+            setIsGenerating(true);
+            // Generate random walls
+            const walls = generateRandomWalls(
+              COLS,
+              ROWS,
+              startPoint,
+              endPoint,
+              0.3,
+            );
+            setWalls(new Set(walls.map((w) => `${w.x},${w.y}`)));
+            draw();
+            setIsGenerating(false);
+          }}
+          disabled={isGenerating}
+        >
+          Randomize Walls
+        </button>
+        <button
+          className="rounded bg-red-500 px-4 py-2 font-bold text-white hover:bg-red-700 disabled:bg-gray-400"
+          onClick={() => {
+            if (isGenerating) return;
+            setWalls(new Set());
+            draw();
+          }}
+          disabled={isGenerating}
+        >
+          Clear Walls
+        </button>
+      </div>
       <div className="flex min-h-0 w-full flex-1 items-center justify-center">
         <canvas
           ref={canvasRef}

@@ -61,8 +61,8 @@ export const FloatingMenu: React.FC = () => {
         <div className="space-y-4">
           {/* 算法类别选择 */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Algorithm Category
+            <label className="mb-1 block text-lg font-semibold text-gray-700">
+              Settings
             </label>
             <select
               value={algorithmCategory}
@@ -166,7 +166,12 @@ export const FloatingMenu: React.FC = () => {
                     setExecutionState("paused");
                   }}
                   // @ts-ignore
-                  disabled={state === "paused" || state === "finished"}
+                  disabled={
+                    state === "paused" ||
+                    // @ts-ignore
+                    state === "finished" ||
+                    state === "ready"
+                  }
                   className="flex-1 rounded-md bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600 disabled:bg-gray-400"
                 >
                   Pause
