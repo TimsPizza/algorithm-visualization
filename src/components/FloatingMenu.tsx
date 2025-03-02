@@ -1,42 +1,16 @@
 import React, { useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useGlobalConfig } from "../context/GlobalConfigContext";
 import { TAlgorithmCategories, TAlgorithms } from "../types";
 import { SORTING_ALGORITHMS } from "./Sorting/algorithms/implementations";
 import Draggable from "react-draggable";
 import { PATH_FINDING_ALGORITHMS } from "./PathFinding/algorithms/implementations";
 
-// 路由映射
-const ROUTES = {
-  CATEGORY_TO_PATH: {
-    "Path Finding": "pathfinding",
-    "Binary Tree": "binarytree",
-    "Sorting": "sorting",
-  },
-  PATH_TO_CATEGORY: {
-    "pathfinding": "Path Finding",
-    "binarytree": "Binary Tree",
-    "sorting": "Sorting",
-  },
-} as const;
-
-// 每个分类的默认算法
-const DEFAULT_ALGORITHMS = {
-  "Path Finding": "Dijkstra",
-  "Sorting": "BubbleSort",
-  "Binary Tree": "InOrder",
-} as const;
-
-// URL参数处理函数
-const updateHashParams = (params: Record<string, string>) => {
-  const [basePath] = window.location.hash.split('?');
-  const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
-  
-  Object.entries(params).forEach(([key, value]) => {
-    urlParams.set(key, value);
-  });
-
-  return `${basePath}?${urlParams.toString()}`;
+// 算法类别与路由路径的映射
+const CATEGORY_ROUTES: Record<TAlgorithmCategories, string> = {
+  "Path Finding": "pathfinding",
+  "Binary Tree": "binarytree",
+  Sorting: "sorting",
 };
 
 export const FloatingMenu: React.FC = () => {
@@ -54,36 +28,11 @@ export const FloatingMenu: React.FC = () => {
     setExecutionState,
   } = useGlobalConfig();
 
-  // 当前路径
-  const location = useLocation();
-  
-  // 监听路由变化，同步算法分类
-  useEffect(() => {
-    const path = location.hash.split('/')[1]?.split('?')[0];
-    const newCategory = ROUTES.PATH_TO_CATEGORY[path as keyof typeof ROUTES.PATH_TO_CATEGORY];
-    
-    if (newCategory && newCategory !== algorithmCategory) {
-      setAlgorithmCategory(newCategory);
-      setAlgorithm(DEFAULT_ALGORITHMS[newCategory]);
-    }
-  }, [location.hash, algorithmCategory, setAlgorithmCategory, setAlgorithm]);
-
   // 处理算法类别变更
   const handleCategoryChange = (category: TAlgorithmCategories) => {
     setAlgorithmCategory(category);
-    setAlgorithm(DEFAULT_ALGORITHMS[category]); // 切换分类时设置默认算法
-    navigate(updateHashParams({
-      category: category,
-      algorithm: DEFAULT_ALGORITHMS[category],
-    }).replace('#', ''));
-  };
-
-  // 处理算法选择
-  const handleAlgorithmChange = (algo: TAlgorithms) => {
-    setAlgorithm(algo);
-    navigate(updateHashParams({
-      algorithm: algo,
-    }).replace('#', ''));
+    // 导航到对应的路由
+    navigate(CATEGORY_ROUTES[category]);
   };
 
   // 获取当前类别可用的算法列表
@@ -117,7 +66,7 @@ export const FloatingMenu: React.FC = () => {
               disabled={state === "running" || state === "paused"}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
             >
-              {Object.keys(ROUTES.CATEGORY_TO_PATH).map((category) => (
+              {Object.keys(CATEGORY_ROUTES).map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
@@ -132,7 +81,7 @@ export const FloatingMenu: React.FC = () => {
             </label>
             <select
               value={algorithm}
-              onChange={(e) => handleAlgorithmChange(e.target.value as TAlgorithms)}
+              onChange={(e) => setAlgorithm(e.target.value as TAlgorithms)}
               disabled={state === "running" || state === "paused"}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
             >
@@ -200,6 +149,7 @@ export const FloatingMenu: React.FC = () => {
               <>
                 <button
                   onClick={() => setExecutionState("running")}
+                  // @ts-ignore
                   disabled={state === "running"}
                   className="flex-1 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:bg-gray-400"
                 >
@@ -209,9 +159,10 @@ export const FloatingMenu: React.FC = () => {
                   onClick={() => {
                     setExecutionState("paused");
                   }}
+                  // @ts-ignore
                   disabled={
                     state === "paused" ||
-                    //@ts-ignore
+                    // @ts-ignore
                     state === "finished" ||
                     state === "ready"
                   }
