@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useEffect, useRef, useCallback, useMemo } from "react";
 import { generateMaze, generateRandomWalls } from "./mazeGenerators";
 import { useGlobalConfig } from "../../context/GlobalConfigContext";
 import { PathFindingController } from "./algorithms/controller";
@@ -45,19 +39,16 @@ export const PathFinding: React.FC = () => {
   const isWallDrawingRef = useRef<boolean | null>(null);
   const visitedRef = useRef<Set<string>>(new Set());
   const pathRef = useRef<Set<string>>(new Set());
+  const startPointRef = useRef<Point>({ x: 12, y: 12 });
+  const endPointRef = useRef<Point>({ x: 37, y: 12 });
+  const wallsRef = useRef<Set<string>>(new Set());
+  const isDraggingRef = useRef(false);
+  const draggedItemRef = useRef<"start" | "end" | "wall" | null>(null);
+  const isGeneratingRef = useRef(false);
 
   // Global Config
   const { algorithm, animationSpeed, state, setExecutionState } =
     useGlobalConfig();
-
-  const [startPoint, setStartPoint] = useState<Point>({ x: 12, y: 12 });
-  const [endPoint, setEndPoint] = useState<Point>({ x: 37, y: 12 });
-  const [walls, setWalls] = useState<Set<string>>(new Set());
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedItem, setDraggedItem] = useState<
-    "start" | "end" | "wall" | null
-  >(null);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   // 计算单元格大小
   const getCellSize = useCallback((canvas: HTMLCanvasElement) => {
@@ -71,21 +62,18 @@ export const PathFinding: React.FC = () => {
   }, []);
 
   // 获取单元格状态 - 从各个状态源组合当前状态
-  const getCellState = useCallback(
-    (point: Point): CellState => {
-      const key = `${point.x},${point.y}`;
-      return {
-        x: point.x,
-        y: point.y,
-        isWall: walls.has(key),
-        isStart: isSamePoint(point, startPoint),
-        isEnd: isSamePoint(point, endPoint),
-        isVisited: visitedRef.current.has(key),
-        isPath: pathRef.current.has(key),
-      };
-    },
-    [walls, startPoint, endPoint],
-  );
+  const getCellState = useCallback((point: Point): CellState => {
+    const key = `${point.x},${point.y}`;
+    return {
+      x: point.x,
+      y: point.y,
+      isWall: wallsRef.current.has(key),
+      isStart: isSamePoint(point, startPointRef.current),
+      isEnd: isSamePoint(point, endPointRef.current),
+      isVisited: visitedRef.current.has(key),
+      isPath: pathRef.current.has(key),
+    };
+  }, []);
 
   // 重绘单个单元格
   const redrawCell = useCallback(
@@ -132,7 +120,7 @@ export const PathFinding: React.FC = () => {
         pathRef.current.clear();
       },
     }),
-    [startPoint, endPoint, redrawCell],
+    [redrawCell],
   );
 
   // 完整重绘
@@ -216,7 +204,9 @@ export const PathFinding: React.FC = () => {
 
       // Initialize wall drawing mode if needed
       if (isWallDrawingRef.current === null) {
-        isWallDrawingRef.current = !walls.has(`${point.x},${point.y}`);
+        isWallDrawingRef.current = !wallsRef.current.has(
+          `${point.x},${point.y}`,
+        );
       }
 
       // Get points to draw
@@ -225,24 +215,20 @@ export const PathFinding: React.FC = () => {
         : [point];
 
       // Update walls for all points in the line
-      setWalls((prevWalls) => {
-        const newWalls = new Set(prevWalls);
-        points.forEach((p) => {
-          const key = `${p.x},${p.y}`;
-          if (isWallDrawingRef.current) {
-            newWalls.add(key);
-          } else {
-            newWalls.delete(key);
-          }
-          redrawCell(p);
-          controllerRef.current?.toggleWall(p);
-        });
-        return newWalls;
+      points.forEach((p) => {
+        const key = `${p.x},${p.y}`;
+        if (isWallDrawingRef.current) {
+          wallsRef.current.add(key);
+        } else {
+          wallsRef.current.delete(key);
+        }
+        redrawCell(p);
+        controllerRef.current?.toggleWall(p);
       });
 
       lastVisitedCellRef.current = point;
     },
-    [walls, redrawCell],
+    [redrawCell],
   );
 
   // 处理网格点击/拖动
@@ -264,50 +250,41 @@ export const PathFinding: React.FC = () => {
         return;
 
       // 检查是否点击了起点或终点
-      if (!isDragging) {
-        if (isSamePoint(gridPos, startPoint)) {
-          setDraggedItem("start");
-          setIsDragging(true);
+      if (!isDraggingRef.current) {
+        if (isSamePoint(gridPos, startPointRef.current)) {
+          draggedItemRef.current = "start";
+          isDraggingRef.current = true;
           return;
         }
-        if (isSamePoint(gridPos, endPoint)) {
-          setDraggedItem("end");
-          setIsDragging(true);
+        if (isSamePoint(gridPos, endPointRef.current)) {
+          draggedItemRef.current = "end";
+          isDraggingRef.current = true;
           return;
         }
         // 如果点击其他位置，开始绘制墙壁
-        setDraggedItem("wall");
-        setIsDragging(true);
+        draggedItemRef.current = "wall";
+        isDraggingRef.current = true;
         handleWallDrawing(gridPos);
-      } else if (draggedItem === "start") {
+      } else if (draggedItemRef.current === "start") {
         if (getCellState(gridPos).isWall || getCellState(gridPos).isEnd) return;
-        const oldPoint = startPoint;
+        const oldPoint = startPointRef.current;
         controllerRef.current.updateStartPoint(gridPos);
-        setStartPoint(gridPos);
+        startPointRef.current = gridPos;
         redrawCell(oldPoint);
         redrawCell(gridPos);
-      } else if (draggedItem === "end") {
+      } else if (draggedItemRef.current === "end") {
         if (getCellState(gridPos).isWall || getCellState(gridPos).isStart)
           return;
         controllerRef.current.updateEndPoint(gridPos);
-        const oldPoint = endPoint;
-        setEndPoint(gridPos);
+        const oldPoint = endPointRef.current;
+        endPointRef.current = gridPos;
         redrawCell(oldPoint);
         redrawCell(gridPos);
-      } else if (draggedItem === "wall") {
+      } else if (draggedItemRef.current === "wall") {
         handleWallDrawing(gridPos);
       }
     },
-    [
-      isDragging,
-      draggedItem,
-      startPoint,
-      endPoint,
-      walls,
-      getCellSize,
-      handleWallDrawing,
-      redrawCell,
-    ],
+    [getCellSize, handleWallDrawing, redrawCell],
   );
 
   // 初始化控制器
@@ -320,8 +297,8 @@ export const PathFinding: React.FC = () => {
 
     controllerRef.current = new PathFindingController(
       grid,
-      startPoint,
-      endPoint,
+      startPointRef.current,
+      endPointRef.current,
       selectedAlgorithm,
       drawOperations,
       animationSpeed,
@@ -369,7 +346,7 @@ export const PathFinding: React.FC = () => {
       case "finished":
         break;
     }
-  }, [state, setExecutionState]);
+  }, [state, setExecutionState, draw]);
 
   // 处理速度变化
   useEffect(() => {
@@ -394,48 +371,56 @@ export const PathFinding: React.FC = () => {
         <button
           className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 disabled:bg-gray-400"
           onClick={() => {
-            if (isGenerating) return;
-            setIsGenerating(true);
+            if (isGeneratingRef.current) return;
+            isGeneratingRef.current = true;
 
             // Generate new maze
-            const walls = generateMaze(COLS, ROWS, startPoint, endPoint);
-            setWalls(new Set(walls.map((w) => `${w.x},${w.y}`)));
+            const walls = generateMaze(
+              COLS,
+              ROWS,
+              startPointRef.current,
+              endPointRef.current,
+            );
+            const newWalls = new Set(walls.map((w) => `${w.x},${w.y}`));
+            wallsRef.current = newWalls;
             draw();
-            setIsGenerating(false);
+            isGeneratingRef.current = false;
           }}
-          disabled={isGenerating}
+          disabled={isGeneratingRef.current}
         >
           Generate Maze
         </button>
         <button
           className="rounded bg-green-500 px-4 py-2 font-bold text-white hover:bg-green-700 disabled:bg-gray-400"
           onClick={() => {
-            if (isGenerating) return;
-            setIsGenerating(true);
+            if (isGeneratingRef.current) return;
+            isGeneratingRef.current = true;
+
             // Generate random walls
             const walls = generateRandomWalls(
               COLS,
               ROWS,
-              startPoint,
-              endPoint,
+              startPointRef.current,
+              endPointRef.current,
               0.3,
             );
-            setWalls(new Set(walls.map((w) => `${w.x},${w.y}`)));
+            const newWalls = new Set(walls.map((w) => `${w.x},${w.y}`));
+            wallsRef.current = newWalls;
             draw();
-            setIsGenerating(false);
+            isGeneratingRef.current = false;
           }}
-          disabled={isGenerating}
+          disabled={isGeneratingRef.current}
         >
           Randomize Walls
         </button>
         <button
           className="rounded bg-red-500 px-4 py-2 font-bold text-white hover:bg-red-700 disabled:bg-gray-400"
           onClick={() => {
-            if (isGenerating) return;
-            setWalls(new Set());
+            if (isGeneratingRef.current) return;
+            wallsRef.current = new Set();
             draw();
           }}
-          disabled={isGenerating}
+          disabled={isGeneratingRef.current}
         >
           Clear Walls
         </button>
@@ -446,19 +431,19 @@ export const PathFinding: React.FC = () => {
           className="h-screen w-screen cursor-pointer"
           onMouseDown={handleGridInteraction}
           onMouseMove={(e) => {
-            if (isDragging) {
+            if (isDraggingRef.current) {
               handleGridInteraction(e);
             }
           }}
           onMouseUp={() => {
-            setIsDragging(false);
-            setDraggedItem(null);
+            isDraggingRef.current = false;
+            draggedItemRef.current = null;
             lastVisitedCellRef.current = null;
             isWallDrawingRef.current = null;
           }}
           onMouseLeave={() => {
-            setIsDragging(false);
-            setDraggedItem(null);
+            isDraggingRef.current = false;
+            draggedItemRef.current = null;
             lastVisitedCellRef.current = null;
             isWallDrawingRef.current = null;
           }}
