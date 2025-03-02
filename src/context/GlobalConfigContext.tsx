@@ -13,6 +13,18 @@ const STORAGE_KEYS = {
   ARRAY_SIZE: "algo-viz-array-size",
 } as const;
 
+// Function to get URL parameters from hash
+const getHashParams = () => {
+  const [, queryString] = window.location.hash.split('?');
+  return new URLSearchParams(queryString || '');
+};
+
+// Function to update URL with new parameters
+const updateHashWithParams = (params: URLSearchParams) => {
+  const [basePath] = window.location.hash.split('?');
+  window.location.hash = `${basePath}?${params.toString()}`;
+};
+
 export const GlobalConfigContext = React.createContext<IGlobalConfigContext>({
   algorithmCategory: "Path Finding",
   algorithm: "Dijkstra",
@@ -32,18 +44,18 @@ export const GlobalConfigProvider: React.FC<{ children: React.ReactNode }> = ({
   // Initialize state from localStorage or URL parameters
   const [algorithmCategory, setAlgorithmCategory] =
     React.useState<TAlgorithmCategories>(() => {
-      const urlParams = new URLSearchParams(window.location.search);
+      const urlParams = getHashParams();
       return (
         (urlParams.get("category") as TAlgorithmCategories) ||
         (localStorage.getItem(
           STORAGE_KEYS.ALGORITHM_CATEGORY,
         ) as TAlgorithmCategories) ||
-        "Path Finding"
+        "Sorting"
       );
     });
 
   const [algorithm, setAlgorithm] = React.useState<TAlgorithms>(() => {
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = getHashParams();
     return (
       (urlParams.get("algorithm") as TAlgorithms) ||
       (localStorage.getItem(STORAGE_KEYS.ALGORITHM) as TAlgorithms) ||
@@ -52,7 +64,7 @@ export const GlobalConfigProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   const [animationSpeed, setAnimationSpeed] = React.useState<number>(() => {
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = getHashParams();
     return parseInt(
       urlParams.get("speed") ||
         localStorage.getItem(STORAGE_KEYS.ANIMATION_SPEED) ||
@@ -62,7 +74,7 @@ export const GlobalConfigProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   const [arraySize, setArraySize] = React.useState<number>(() => {
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = getHashParams();
     return parseInt(
       urlParams.get("size") ||
         localStorage.getItem(STORAGE_KEYS.ARRAY_SIZE) ||
@@ -88,55 +100,95 @@ export const GlobalConfigProvider: React.FC<{ children: React.ReactNode }> = ({
       setAlgorithmCategory(category);
       localStorage.setItem(STORAGE_KEYS.ALGORITHM_CATEGORY, category);
 
-      const urlParams = new URLSearchParams(window.location.search);
+      const urlParams = getHashParams();
       urlParams.set("category", category);
-      window.history.pushState(
-        {},
-        "",
-        `${window.location.pathname}?${urlParams.toString()}`,
-      );
+      updateHashWithParams(urlParams);
     },
-    [],
+    [setAlgorithmCategory],
   );
 
   const handleAlgorithmChange = React.useCallback((algo: TAlgorithms) => {
     setAlgorithm(algo);
     localStorage.setItem(STORAGE_KEYS.ALGORITHM, algo);
 
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = getHashParams();
     urlParams.set("algorithm", algo);
-    window.history.pushState(
-      {},
-      "",
-      `${window.location.pathname}?${urlParams.toString()}`,
-    );
-  }, []);
+    updateHashWithParams(urlParams);
+  }, [setAlgorithm]);
 
   const handleSpeedChange = React.useCallback((speed: number) => {
     setAnimationSpeed(speed);
     localStorage.setItem(STORAGE_KEYS.ANIMATION_SPEED, speed.toString());
 
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = getHashParams();
     urlParams.set("speed", speed.toString());
-    window.history.pushState(
-      {},
-      "",
-      `${window.location.pathname}?${urlParams.toString()}`,
-    );
-  }, []);
+    updateHashWithParams(urlParams);
+  }, [setAnimationSpeed]);
 
   const handleArraySizeChange = React.useCallback((size: number) => {
     setArraySize(size);
     localStorage.setItem(STORAGE_KEYS.ARRAY_SIZE, size.toString());
 
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = getHashParams();
     urlParams.set("size", size.toString());
-    window.history.pushState(
-      {},
-      "",
-      `${window.location.pathname}?${urlParams.toString()}`,
-    );
-  }, []);
+    updateHashWithParams(urlParams);
+  }, [setArraySize]);
+
+  // Function to sync state from URL parameters
+  const syncStateFromUrl = React.useCallback(() => {
+    const urlParams = getHashParams();
+    const category = urlParams.get("category") as TAlgorithmCategories;
+    const algo = urlParams.get("algorithm") as TAlgorithms;
+    const speed = urlParams.get("speed");
+    const size = urlParams.get("size");
+
+    if (category && category !== algorithmCategory) {
+      handleCategoryChange(category);
+    }
+    if (algo && algo !== algorithm) {
+      handleAlgorithmChange(algo);
+    }
+    if (speed) {
+      const newSpeed = parseInt(speed, 10);
+      if (newSpeed !== animationSpeed) {
+        handleSpeedChange(newSpeed);
+      }
+    }
+    if (size) {
+      const newSize = parseInt(size, 10);
+      if (newSize !== arraySize) {
+        handleArraySizeChange(newSize);
+      }
+    }
+  }, [
+    algorithmCategory,
+    algorithm,
+    animationSpeed,
+    arraySize,
+    handleCategoryChange,
+    handleAlgorithmChange,
+    handleSpeedChange,
+    handleArraySizeChange,
+  ]);
+
+  // Add hash change listener to handle browser navigation
+  React.useEffect(() => {
+    // Handle initial URL parameters
+    syncStateFromUrl();
+    
+    // Listen for hash changes
+    window.addEventListener('hashchange', syncStateFromUrl);
+    return () => window.removeEventListener('hashchange', syncStateFromUrl);
+  }, [
+    algorithmCategory,
+    algorithm,
+    animationSpeed,
+    arraySize,
+    handleCategoryChange,
+    handleAlgorithmChange,
+    handleSpeedChange,
+    handleArraySizeChange,
+  ]);
 
   const value = React.useMemo(
     () => ({

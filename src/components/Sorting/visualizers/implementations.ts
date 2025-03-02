@@ -25,7 +25,10 @@ export const BarVisualizer: Visualizer = {
     // 根据数组大小动态调整柱状图宽度和间距
     const maxBars = width / 2; // 确保至少2像素宽度
     const scale = array.length > maxBars ? maxBars / array.length : 1;
-    const barWidth = Math.max(2, Math.min(10, (width * 0.8 / array.length) * scale));
+    const barWidth = Math.max(
+      2,
+      Math.min(10, ((width * 0.8) / array.length) * scale),
+    );
     const barSpacing = Math.max(0, Math.min(barWidth * 0.2, 2));
     const totalWidth = (barWidth + barSpacing) * array.length;
     const startX = (width - totalWidth) / 2;
@@ -81,7 +84,7 @@ export const CircleVisualizer: Visualizer = {
           ? highlightColor
           : defaultColor;
 
-      ctx.lineWidth = Math.max(1, 360 / array.length);
+      ctx.lineWidth = Math.max(4, 360 / array.length);
       ctx.beginPath();
       ctx.moveTo(startX, startY);
       ctx.lineTo(endX, endY);
@@ -241,7 +244,10 @@ export const HeatBarVisualizer: Visualizer = {
     // 适应大数组的动态缩放
     const maxBars = width / 2;
     const scale = array.length > maxBars ? maxBars / array.length : 1;
-    const barWidth = Math.max(2, Math.min(30, (width * 0.8 / array.length) * scale));
+    const barWidth = Math.max(
+      2,
+      Math.min(30, ((width * 0.8) / array.length) * scale),
+    );
     const barSpacing = Math.max(0, Math.min(barWidth * 0.2, 2));
     const totalWidth = (barWidth + barSpacing) * array.length;
     const startX = (width - totalWidth) / 2;
