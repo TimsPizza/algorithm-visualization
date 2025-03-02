@@ -24,8 +24,9 @@ const COLORS = {
   CURRENT: "#667eea", // 当前访问节点
 } as const;
 
-const COLS = 100;
-const ROWS = 144;
+const COLS = 144;
+const ROWS = 72;
+const CELL_SIZE = 20; // 固定单元格大小为16像素
 
 // 点位相等判断
 const isSamePoint = (p1: Point, p2: Point) => p1.x === p2.x && p1.y === p2.y;
@@ -50,16 +51,8 @@ export const PathFinding: React.FC = () => {
   const { algorithm, animationSpeed, state, setExecutionState } =
     useGlobalConfig();
 
-  // 计算单元格大小
-  const getCellSize = useCallback((canvas: HTMLCanvasElement) => {
-    const rect = canvas.getBoundingClientRect();
-    const cols = COLS; // 固定列数
-    const rows = ROWS; // 固定行数
-    return (
-      Math.min(Math.floor(rect.width / cols), Math.floor(rect.height / rows)) *
-      3
-    );
-  }, []);
+  // 固定单元格大小
+  const getCellSize = useCallback(() => CELL_SIZE, []);
 
   // 获取单元格状态 - 从各个状态源组合当前状态
   const getCellState = useCallback((point: Point): CellState => {
@@ -89,7 +82,7 @@ export const PathFinding: React.FC = () => {
     (point: Point) => {
       if (!contextRef.current || !canvasRef.current) return;
 
-      const cellSize = getCellSize(canvasRef.current);
+      const cellSize = getCellSize();
       const cell = getCellState(point);
 
       GridVisualizer.updateCell(
@@ -142,27 +135,30 @@ export const PathFinding: React.FC = () => {
 
     // 更新画布尺寸
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
+    const cellSize = getCellSize();
+    const totalWidth = COLS * cellSize + COLS;
+    const totalHeight = ROWS * cellSize + ROWS;
 
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    // Set canvas size to exactly fit the grid
+    canvas.width = totalWidth * dpr;
+    canvas.height = totalHeight * dpr;
 
     ctx.scale(dpr, dpr);
+
+    // Set canvas style dimensions
+    canvas.style.width = `${totalWidth}px`;
+    canvas.style.height = `${totalHeight}px`;
     contextRef.current = ctx;
 
-    const cellSize = getCellSize(canvas);
-    const cols = COLS;
-    const rows = ROWS;
-
     // 构建当前网格状态
-    const grid: Grid = Array.from({ length: rows }, (_, i) =>
-      Array.from({ length: cols }, (_, j) => getCellState({ x: j, y: i })),
+    const grid: Grid = Array.from({ length: ROWS }, (_, i) =>
+      Array.from({ length: COLS }, (_, j) => getCellState({ x: j, y: i })),
     );
 
     GridVisualizer.draw({
       ctx,
-      width: rect.width,
-      height: rect.height,
+      width: totalWidth,
+      height: totalHeight,
       grid,
       cellSize,
       colors: {
@@ -248,9 +244,12 @@ export const PathFinding: React.FC = () => {
       if (!canvas || !controllerRef.current) return;
 
       const rect = canvas.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      const cellSize = getCellSize(canvas);
+      const containerDiv = canvas.parentElement;
+      if (!containerDiv) return;
+
+      const x = event.clientX - rect.left + containerDiv.scrollLeft;
+      const y = event.clientY - rect.top + containerDiv.scrollTop;
+      const cellSize = getCellSize();
 
       const gridPos = GridVisualizer.getGridPosition(x, y, cellSize);
       if (
@@ -377,7 +376,7 @@ export const PathFinding: React.FC = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="fixed left-4 top-4 z-10 flex gap-2">
+      <div className="sticky left-4 top-4 z-10 flex gap-2 rounded-lg bg-white/80 p-2 shadow backdrop-blur">
         <button
           className="rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 disabled:bg-gray-400"
           onClick={() => {
@@ -438,10 +437,10 @@ export const PathFinding: React.FC = () => {
           Clear Walls
         </button>
       </div>
-      <div className="flex min-h-0 w-full flex-1 items-center justify-center">
+      <div className="relative flex min-h-0 w-full flex-1 items-start justify-start overflow-auto p-4">
         <canvas
           ref={canvasRef}
-          className="h-screen w-screen cursor-pointer"
+          className="cursor-pointer"
           onMouseDown={handleGridInteraction}
           onMouseMove={(e) => {
             if (isDraggingRef.current) {
