@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGlobalConfig } from "../context/GlobalConfigContext";
 import { TAlgorithmCategories, TAlgorithms } from "../types";
@@ -9,10 +9,8 @@ import { PATH_FINDING_ALGORITHMS } from "./PathFinding/algorithms/implementation
 // 算法类别与路由路径的映射
 const CATEGORY_ROUTES: Record<TAlgorithmCategories, string> = {
   "Path Finding": "pathfinding",
-  "Bi-Tree Traversal": "tree-traversal",
-  "Bi-Search Tree": "bst",
+  "Binary Tree": "binarytree",
   Sorting: "sorting",
-  "Graph Traversal": "graph",
 };
 
 export const FloatingMenu: React.FC = () => {
@@ -42,14 +40,10 @@ export const FloatingMenu: React.FC = () => {
     switch (algorithmCategory) {
       case "Path Finding":
         return PATH_FINDING_ALGORITHMS;
-      case "Bi-Tree Traversal":
-        return ["InOrder", "PreOrder", "PostOrder"];
-      case "Bi-Search Tree":
-        return ["Insert", "Search", "Delete"];
       case "Sorting":
         return SORTING_ALGORITHMS;
-      case "Graph Traversal":
-        return ["BreadthFirst", "DepthFirst"];
+      case "Binary Tree":
+        return ["InOrder", "PreOrder", "PostOrder", "LevelOrder"];
       default:
         return [];
     }

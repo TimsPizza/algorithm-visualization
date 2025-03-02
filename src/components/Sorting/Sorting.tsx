@@ -37,8 +37,14 @@ export const Sorting: React.FC = () => {
   const requestAnimationFrameRef = useRef<number>();
 
   // Global Config
-  const { algorithm, animationSpeed, arraySize, state, setExecutionState } =
-    useGlobalConfig();
+  const {
+    algorithm,
+    animationSpeed,
+    arraySize,
+    state,
+    setExecutionState,
+    setAlgorithm,
+  } = useGlobalConfig();
 
   // Local State
   const [array, setArray] = useState<number[]>(() =>
@@ -124,6 +130,11 @@ export const Sorting: React.FC = () => {
     }),
     [],
   );
+
+  // 初始化算法
+  useEffect(() => {
+    setAlgorithm("BubbleSort");
+  }, []);
 
   // 使用 requestAnimationFrame 优化重绘
   useEffect(() => {
@@ -213,7 +224,7 @@ export const Sorting: React.FC = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" id="sorting-wrapper">
-      <div className="flex flex-none flex-row flex-wrap justify-center gap-2 mt-4">
+      <div className="mt-4 flex flex-none flex-row flex-wrap justify-center gap-2">
         {VISUALIZER_OPTIONS.map(({ type, label }) => (
           <button
             key={type}

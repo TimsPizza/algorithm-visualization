@@ -41,7 +41,7 @@ export const PathFinding: React.FC = () => {
   const visitedRef = useRef<Set<string>>(new Set());
   const pathRef = useRef<Set<string>>(new Set());
   const startPointRef = useRef<Point>({ x: 12, y: 12 });
-  const endPointRef = useRef<Point>({ x: 37, y: 12 });
+  const endPointRef = useRef<Point>({ x: 66, y: 12 });
   const wallsRef = useRef<Set<string>>(new Set());
   const isDraggingRef = useRef(false);
   const draggedItemRef = useRef<"start" | "end" | "wall" | null>(null);

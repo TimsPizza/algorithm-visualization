@@ -13,17 +13,11 @@ interface IGlobalConfigContext {
   setArraySize: (size: number) => void;
 }
 
-export type TAlgorithmCategories =
-  | "Path Finding"
-  | "Bi-Tree Traversal"
-  | "Bi-Search Tree"
-  | "Sorting"
-  | "Graph Traversal";
+export type TAlgorithmCategories = "Path Finding" | "Binary Tree" | "Sorting";
 
 export type TAlgorithms =
   | TPathFindingAlgorithms
-  | TBiTreeTraversalAlgorithms
-  | TBiSearchTreeAlgorithms
+  | TBiTreeAlgorithms
   | TSortingAlgorithms
   | TGraphTraversalAlgorithms;
 
@@ -34,11 +28,13 @@ export type TPathFindingAlgorithms =
   | "BreadthFirst"
   | "DepthFirst"
   | "Bidirectional-BFS"
-  | "Bidirectional-A*"
+  | "Bidirectional-A*";
 
-export type TBiTreeTraversalAlgorithms = "InOrder" | "PreOrder" | "PostOrder";
-
-export type TBiSearchTreeAlgorithms = "Insert" | "Search" | "Delete";
+export type TBiTreeAlgorithms =
+  | "InOrder"
+  | "PreOrder"
+  | "PostOrder"
+  | "LevelOrder";
 
 export type TSortingAlgorithms =
   | "BubbleSort"
