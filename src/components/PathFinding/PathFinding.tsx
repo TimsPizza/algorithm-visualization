@@ -75,6 +75,15 @@ export const PathFinding: React.FC = () => {
     };
   }, []);
 
+  // 更新控制器网格
+  const updateControllerGrid = useCallback(() => {
+    if (!controllerRef.current) return;
+    const grid = Array.from({ length: ROWS }, (_, i) =>
+      Array.from({ length: COLS }, (_, j) => getCellState({ x: j, y: i })),
+    );
+    controllerRef.current.updateGrid(grid);
+  }, [getCellState]);
+
   // 重绘单个单元格
   const redrawCell = useCallback(
     (point: Point) => {
@@ -223,8 +232,9 @@ export const PathFinding: React.FC = () => {
           wallsRef.current.delete(key);
         }
         redrawCell(p);
-        controllerRef.current?.toggleWall(p);
       });
+      // Update the controller's grid after all wall changes
+      updateControllerGrid();
 
       lastVisitedCellRef.current = point;
     },
@@ -383,6 +393,7 @@ export const PathFinding: React.FC = () => {
             );
             const newWalls = new Set(walls.map((w) => `${w.x},${w.y}`));
             wallsRef.current = newWalls;
+            updateControllerGrid();
             draw();
             isGeneratingRef.current = false;
           }}
@@ -406,6 +417,7 @@ export const PathFinding: React.FC = () => {
             );
             const newWalls = new Set(walls.map((w) => `${w.x},${w.y}`));
             wallsRef.current = newWalls;
+            updateControllerGrid();
             draw();
             isGeneratingRef.current = false;
           }}
@@ -418,6 +430,7 @@ export const PathFinding: React.FC = () => {
           onClick={() => {
             if (isGeneratingRef.current) return;
             wallsRef.current = new Set();
+            updateControllerGrid();
             draw();
           }}
           disabled={isGeneratingRef.current}
