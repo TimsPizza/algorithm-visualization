@@ -27,7 +27,7 @@ export const router = createHashRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="/pathfinding" replace />,
+        element: <Navigate to="/sorting" replace />,
       },
       {
         path: "pathfinding",
